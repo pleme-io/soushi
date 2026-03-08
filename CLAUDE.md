@@ -9,7 +9,7 @@ cargo test           # 33 unit tests + 1 doc-test
 
 ## Architecture
 
-Extracts the common Rhai engine setup from karakuri and hikyaku. Both register builtins, load script directories, and share the same boilerplate -- this library provides a single `ScriptEngine` that handles all of it.
+Extracts the common Rhai engine setup from ayatsuri and hikyaku. Both register builtins, load script directories, and share the same boilerplate -- this library provides a single `ScriptEngine` that handles all of it.
 
 ### Module Map
 
@@ -52,5 +52,5 @@ let val = engine.eval_ast(&ast).unwrap();
 
 ## Consumers
 
-- **karakuri** -- window manager automation scripts
+- **ayatsuri** -- window manager automation scripts
 - **hikyaku** -- email automation scripts
