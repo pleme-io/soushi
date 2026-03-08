@@ -1,19 +1,14 @@
 {
-  description = "Soushi (草紙) — Rhai scripting engine";
+  description = "Soushi (草紙) — Rhai scripting engine: shared engine setup, builtins, and script loading";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
-    substrate = {
-      url = "github:pleme-io/substrate";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =
     {
       self,
       nixpkgs,
-      substrate,
       ...
     }:
     let
