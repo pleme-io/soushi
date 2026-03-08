@@ -1,0 +1,25 @@
+[package]
+name = "soushi"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89.0"
+description = "Soushi (草紙) — Rhai scripting engine: shared engine setup, builtins, and script loading"
+homepage = "https://github.com/pleme-io/soushi"
+repository = "https://github.com/pleme-io/soushi"
+readme = "README.md"
+license = "MIT"
+categories = ["development-tools"]
+keywords = ["rhai", "scripting", "automation", "engine"]
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+
+[dependencies]
+rhai = { version = "1.23", features = ["sync", "internals"] }
+tracing = "0.1"
+thiserror = "2"
+
+[dev-dependencies]
+tempfile = "3"
