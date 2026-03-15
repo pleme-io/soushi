@@ -497,4 +497,464 @@ mod tests {
             "compile error should contain 'script error': {msg}"
         );
     }
+
+    // --- eval edge cases ---
+
+    #[test]
+    fn eval_empty_string_returns_unit() {
+        let engine = ScriptEngine::new();
+        let result = engine.eval("").unwrap();
+        assert!(result.is_unit(), "empty script should return unit/()");
+    }
+
+    #[test]
+    fn eval_whitespace_only_returns_unit() {
+        let engine = ScriptEngine::new();
+        let result = engine.eval("   \n\t  ").unwrap();
+        assert!(result.is_unit());
+    }
+
+    #[test]
+    fn eval_semicolon_only_returns_unit() {
+        let engine = ScriptEngine::new();
+        let result = engine.eval(";").unwrap();
+        assert!(result.is_unit());
+    }
+
+    #[test]
+    fn eval_multiline_script() {
+        let engine = ScriptEngine::new();
+        let script = r"
+            let a = 10;
+            let b = 20;
+            let c = a + b;
+            c * 2
+        ";
+        let result = engine.eval(script).unwrap();
+        assert_eq!(result.as_int().unwrap(), 60);
+    }
+
+    #[test]
+    fn eval_string_concatenation() {
+        let engine = ScriptEngine::new();
+        let result = engine.eval(r#""hello" + " " + "world""#).unwrap();
+        assert_eq!(result.into_string().unwrap(), "hello world");
+    }
+
+    #[test]
+    fn eval_if_else_expression() {
+        let engine = ScriptEngine::new();
+        let result = engine.eval("if 10 > 5 { 1 } else { 0 }").unwrap();
+        assert_eq!(result.as_int().unwrap(), 1);
+    }
+
+    #[test]
+    fn eval_loop_with_break() {
+        let engine = ScriptEngine::new();
+        let script = r"
+            let sum = 0;
+            for i in 1..=10 {
+                sum += i;
+            }
+            sum
+        ";
+        let result = engine.eval(script).unwrap();
+        assert_eq!(result.as_int().unwrap(), 55);
+    }
+
+    #[test]
+    fn eval_function_definition_and_call() {
+        let engine = ScriptEngine::new();
+        let script = r"
+            fn add(a, b) { a + b }
+            add(3, 4)
+        ";
+        let result = engine.eval(script).unwrap();
+        assert_eq!(result.as_int().unwrap(), 7);
+    }
+
+    #[test]
+    fn eval_division_by_zero_returns_err() {
+        let engine = ScriptEngine::new();
+        let result = engine.eval("1 / 0");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn eval_undefined_variable_returns_err() {
+        let engine = ScriptEngine::new();
+        let result = engine.eval("undefined_variable");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn eval_type_mismatch_returns_err() {
+        let engine = ScriptEngine::new();
+        let result = engine.eval(r#""hello" - 5"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn eval_nested_arithmetic() {
+        let engine = ScriptEngine::new();
+        let result = engine.eval("((2 + 3) * (4 - 1)) / 5").unwrap();
+        assert_eq!(result.as_int().unwrap(), 3);
+    }
+
+    #[test]
+    fn eval_array_literal() {
+        let engine = ScriptEngine::new();
+        let result = engine.eval("[1, 2, 3].len()").unwrap();
+        assert_eq!(result.as_int().unwrap(), 3);
+    }
+
+    #[test]
+    fn eval_map_literal() {
+        let engine = ScriptEngine::new();
+        let result = engine.eval(r#"let m = #{x: 42}; m.x"#).unwrap();
+        assert_eq!(result.as_int().unwrap(), 42);
+    }
+
+    // --- String builtin edge cases ---
+
+    #[test]
+    fn str_contains_empty_needle_always_true() {
+        let mut engine = ScriptEngine::new();
+        engine.register_builtin_string();
+        let result = engine
+            .eval(r#"str_contains("anything", "")"#)
+            .unwrap();
+        assert!(result.as_bool().unwrap());
+    }
+
+    #[test]
+    fn str_contains_empty_haystack() {
+        let mut engine = ScriptEngine::new();
+        engine.register_builtin_string();
+        let result = engine
+            .eval(r#"str_contains("", "something")"#)
+            .unwrap();
+        assert!(!result.as_bool().unwrap());
+    }
+
+    #[test]
+    fn str_replace_no_match_returns_original() {
+        let mut engine = ScriptEngine::new();
+        engine.register_builtin_string();
+        let result = engine
+            .eval(r#"str_replace("hello world", "xyz", "abc")"#)
+            .unwrap();
+        assert_eq!(result.into_string().unwrap(), "hello world");
+    }
+
+    #[test]
+    fn str_replace_multiple_occurrences() {
+        let mut engine = ScriptEngine::new();
+        engine.register_builtin_string();
+        let result = engine
+            .eval(r#"str_replace("aaa", "a", "bb")"#)
+            .unwrap();
+        assert_eq!(result.into_string().unwrap(), "bbbbbb");
+    }
+
+    #[test]
+    fn str_upper_empty_string() {
+        let mut engine = ScriptEngine::new();
+        engine.register_builtin_string();
+        let result = engine.eval(r#"str_upper("")"#).unwrap();
+        assert_eq!(result.into_string().unwrap(), "");
+    }
+
+    #[test]
+    fn str_lower_empty_string() {
+        let mut engine = ScriptEngine::new();
+        engine.register_builtin_string();
+        let result = engine.eval(r#"str_lower("")"#).unwrap();
+        assert_eq!(result.into_string().unwrap(), "");
+    }
+
+    #[test]
+    fn str_upper_unicode() {
+        let mut engine = ScriptEngine::new();
+        engine.register_builtin_string();
+        let result = engine.eval(r#"str_upper("cafe\u0301")"#).unwrap();
+        let s = result.into_string().unwrap();
+        assert_eq!(s, "CAFE\u{0301}");
+    }
+
+    #[test]
+    fn str_contains_unicode() {
+        let mut engine = ScriptEngine::new();
+        engine.register_builtin_string();
+        let result = engine
+            .eval(r#"str_contains("日本語テスト", "本語")"#)
+            .unwrap();
+        assert!(result.as_bool().unwrap());
+    }
+
+    // --- Builtin registration combinations ---
+
+    #[test]
+    fn register_all_builtins_together() {
+        let mut engine = ScriptEngine::new();
+        engine.register_builtin_log();
+        engine.register_builtin_env();
+        engine.register_builtin_string();
+
+        // All three families work together
+        let _ = engine.eval(r#"log_info("test")"#).unwrap();
+        let result = engine
+            .eval(r#"str_upper(env_var("SOUSHI_NONEXISTENT_987654"))"#)
+            .unwrap();
+        assert_eq!(result.into_string().unwrap(), "");
+    }
+
+    #[test]
+    fn register_builtins_idempotent() {
+        let mut engine = ScriptEngine::new();
+        engine.register_builtin_string();
+        engine.register_builtin_string(); // double register
+
+        let result = engine.eval(r#"str_upper("ok")"#).unwrap();
+        assert_eq!(result.into_string().unwrap(), "OK");
+    }
+
+    // --- eval_file edge cases ---
+
+    #[test]
+    fn eval_file_empty_script() {
+        let dir = TempDir::new().unwrap();
+        let script_path = dir.path().join("empty.rhai");
+        std::fs::write(&script_path, "").unwrap();
+
+        let engine = ScriptEngine::new();
+        let result = engine.eval_file(&script_path).unwrap();
+        assert!(result.is_unit());
+    }
+
+    #[test]
+    fn eval_file_with_syntax_error() {
+        let dir = TempDir::new().unwrap();
+        let script_path = dir.path().join("bad.rhai");
+        std::fs::write(&script_path, "let = = ;").unwrap();
+
+        let engine = ScriptEngine::new();
+        let result = engine.eval_file(&script_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn eval_file_returns_last_expression() {
+        let dir = TempDir::new().unwrap();
+        let script_path = dir.path().join("multi.rhai");
+        std::fs::write(&script_path, "let a = 1;\nlet b = 2;\na + b").unwrap();
+
+        let engine = ScriptEngine::new();
+        let result = engine.eval_file(&script_path).unwrap();
+        assert_eq!(result.as_int().unwrap(), 3);
+    }
+
+    // --- load_scripts_dir edge cases ---
+
+    #[test]
+    fn load_scripts_dir_ignores_subdirectories() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("main.rhai"), "let x = 1;").unwrap();
+        std::fs::create_dir(dir.path().join("subdir")).unwrap();
+        std::fs::write(
+            dir.path().join("subdir").join("nested.rhai"),
+            "let y = 2;",
+        )
+        .unwrap();
+
+        let mut engine = ScriptEngine::new();
+        let names = engine.load_scripts_dir(dir.path()).unwrap();
+        assert_eq!(names, vec!["main"]);
+    }
+
+    #[test]
+    fn load_scripts_dir_sorted_order() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("zebra.rhai"), "let z = 1;").unwrap();
+        std::fs::write(dir.path().join("alpha.rhai"), "let a = 1;").unwrap();
+        std::fs::write(dir.path().join("middle.rhai"), "let m = 1;").unwrap();
+
+        let mut engine = ScriptEngine::new();
+        let names = engine.load_scripts_dir(dir.path()).unwrap();
+        assert_eq!(names, vec!["alpha", "middle", "zebra"]);
+    }
+
+    #[test]
+    fn load_scripts_dir_stops_on_error() {
+        let dir = TempDir::new().unwrap();
+        // "aaa" sorts before "bbb", so the error script runs first
+        std::fs::write(dir.path().join("aaa_bad.rhai"), "let = = ;").unwrap();
+        std::fs::write(dir.path().join("bbb_good.rhai"), "let x = 1;").unwrap();
+
+        let mut engine = ScriptEngine::new();
+        let result = engine.load_scripts_dir(dir.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn load_scripts_dir_ignores_non_rhai_extensions() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("script.rhai"), "let x = 1;").unwrap();
+        std::fs::write(dir.path().join("notes.txt"), "not a script").unwrap();
+        std::fs::write(dir.path().join("data.json"), "{}").unwrap();
+        std::fs::write(dir.path().join("readme.md"), "# hi").unwrap();
+        std::fs::write(dir.path().join("no_ext"), "random").unwrap();
+
+        let mut engine = ScriptEngine::new();
+        let names = engine.load_scripts_dir(dir.path()).unwrap();
+        assert_eq!(names, vec!["script"]);
+    }
+
+    // --- compile + eval_ast edge cases ---
+
+    #[test]
+    fn ast_can_be_evaluated_multiple_times() {
+        let engine = ScriptEngine::new();
+        let ast = engine.compile("40 + 2").unwrap();
+
+        let r1 = engine.eval_ast(&ast).unwrap();
+        let r2 = engine.eval_ast(&ast).unwrap();
+        assert_eq!(r1.as_int().unwrap(), 42);
+        assert_eq!(r2.as_int().unwrap(), 42);
+    }
+
+    #[test]
+    fn compile_empty_script() {
+        let engine = ScriptEngine::new();
+        let ast = engine.compile("").unwrap();
+        let result = engine.eval_ast(&ast).unwrap();
+        assert!(result.is_unit());
+    }
+
+    #[test]
+    fn compile_with_builtins() {
+        let mut engine = ScriptEngine::new();
+        engine.register_builtin_string();
+
+        let ast = engine.compile(r#"str_upper("test")"#).unwrap();
+        let result = engine.eval_ast(&ast).unwrap();
+        assert_eq!(result.into_string().unwrap(), "TEST");
+    }
+
+    // --- register_fn edge cases ---
+
+    #[test]
+    fn register_fn_multiple_custom_functions() {
+        let mut engine = ScriptEngine::new();
+        engine.register_fn("add", |a: i64, b: i64| a + b);
+        engine.register_fn("mul", |a: i64, b: i64| a * b);
+
+        let result = engine.eval("add(3, mul(4, 5))").unwrap();
+        assert_eq!(result.as_int().unwrap(), 23);
+    }
+
+    #[test]
+    fn register_fn_returning_string() {
+        let mut engine = ScriptEngine::new();
+        engine.register_fn("greet", |name: &str| -> String {
+            format!("Hello, {name}!")
+        });
+
+        let result = engine.eval(r#"greet("world")"#).unwrap();
+        assert_eq!(result.into_string().unwrap(), "Hello, world!");
+    }
+
+    #[test]
+    fn register_fn_returning_bool() {
+        let mut engine = ScriptEngine::new();
+        engine.register_fn("is_positive", |x: i64| -> bool { x > 0 });
+
+        let t = engine.eval("is_positive(1)").unwrap();
+        let f = engine.eval("is_positive(-1)").unwrap();
+        assert!(t.as_bool().unwrap());
+        assert!(!f.as_bool().unwrap());
+    }
+
+    // --- SoushiError coverage ---
+
+    #[test]
+    fn no_such_script_error_display() {
+        let err = SoushiError::NoSuchScript("missing.rhai".to_string());
+        assert_eq!(err.to_string(), "no such script: missing.rhai");
+    }
+
+    #[test]
+    fn io_error_display() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied");
+        let err = SoushiError::IoError(io_err);
+        assert!(err.to_string().contains("denied"));
+    }
+
+    #[test]
+    fn script_error_display() {
+        let err = SoushiError::ScriptError("something went wrong".to_string());
+        assert_eq!(err.to_string(), "script error: something went wrong");
+    }
+
+    #[test]
+    fn error_from_eval_alt_result() {
+        let engine = ScriptEngine::new();
+        let err = engine.eval("throw \"boom\"").unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("script error"), "got: {msg}");
+        assert!(msg.contains("boom"), "got: {msg}");
+    }
+
+    #[test]
+    fn error_from_parse_error() {
+        let engine = ScriptEngine::new();
+        let err = engine.compile("fn (").unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("script error"), "got: {msg}");
+    }
+
+    #[test]
+    fn error_debug_impl() {
+        let err = SoushiError::NoSuchScript("test".to_string());
+        let debug = format!("{err:?}");
+        assert!(debug.contains("NoSuchScript"), "got: {debug}");
+    }
+
+    // --- Expression depth limits ---
+
+    #[test]
+    fn deeply_nested_expression_rejected() {
+        let engine = ScriptEngine::new();
+        // Build a deeply nested expression exceeding the depth limit of 64
+        let mut script = String::from("1");
+        for _ in 0..100 {
+            script = format!("({script} + 1)");
+        }
+        let result = engine.eval(&script);
+        assert!(result.is_err(), "deeply nested expression should be rejected");
+    }
+
+    // --- inner_mut mutation ---
+
+    #[test]
+    fn inner_mut_can_configure_engine() {
+        let mut engine = ScriptEngine::new();
+        engine.inner_mut().set_max_expr_depths(10, 10);
+
+        // A moderately nested expression should now fail with tighter limits
+        let mut script = String::from("1");
+        for _ in 0..20 {
+            script = format!("({script} + 1)");
+        }
+        let result = engine.eval(&script);
+        assert!(result.is_err(), "should fail with reduced depth limit");
+    }
+
+    // --- Rhai re-export from lib.rs ---
+
+    #[test]
+    fn rhai_dynamic_from_int() {
+        let val = rhai::Dynamic::from(42_i64);
+        assert_eq!(val.as_int().unwrap(), 42);
+    }
 }
