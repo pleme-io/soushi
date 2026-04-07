@@ -55,6 +55,17 @@ impl ScriptEngine {
             });
     }
 
+    /// Register all built-in function families (log, env, and string).
+    ///
+    /// Equivalent to calling [`register_builtin_log`](Self::register_builtin_log),
+    /// [`register_builtin_env`](Self::register_builtin_env), and
+    /// [`register_builtin_string`](Self::register_builtin_string) individually.
+    pub fn register_all_builtins(&mut self) {
+        self.register_builtin_log();
+        self.register_builtin_env();
+        self.register_builtin_string();
+    }
+
     /// Register string builtins: `str_contains`, `str_replace`, `str_upper`, `str_lower`.
     pub fn register_builtin_string(&mut self) {
         self.engine
