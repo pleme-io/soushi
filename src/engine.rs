@@ -203,6 +203,117 @@ impl Default for ScriptEngine {
     }
 }
 
+/// Builder for configuring a [`ScriptEngine`] before use.
+///
+/// Allows setting expression depth limits and selectively registering
+/// builtin function families.
+///
+/// # Example
+///
+/// ```
+/// use soushi::ScriptEngineBuilder;
+///
+/// let engine = ScriptEngineBuilder::new()
+///     .max_expr_depth(128)
+///     .with_string_builtins()
+///     .with_env_builtins()
+///     .build();
+/// ```
+pub struct ScriptEngineBuilder {
+    max_expr_depth: u64,
+    max_function_expr_depth: u64,
+    log: bool,
+    env: bool,
+    string: bool,
+}
+
+impl Default for ScriptEngineBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ScriptEngineBuilder {
+    /// Create a new builder with default settings.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            max_expr_depth: 64,
+            max_function_expr_depth: 64,
+            log: false,
+            env: false,
+            string: false,
+        }
+    }
+
+    /// Set the maximum expression nesting depth for both global and
+    /// function scopes.
+    #[must_use]
+    pub fn max_expr_depth(mut self, depth: u64) -> Self {
+        self.max_expr_depth = depth;
+        self.max_function_expr_depth = depth;
+        self
+    }
+
+    /// Set the maximum expression nesting depth for function bodies.
+    #[must_use]
+    pub fn max_function_expr_depth(mut self, depth: u64) -> Self {
+        self.max_function_expr_depth = depth;
+        self
+    }
+
+    /// Enable log builtins (`log_info`, `log_warn`, `log_error`).
+    #[must_use]
+    pub fn with_log_builtins(mut self) -> Self {
+        self.log = true;
+        self
+    }
+
+    /// Enable environment builtins (`env_var`, `env_exists`).
+    #[must_use]
+    pub fn with_env_builtins(mut self) -> Self {
+        self.env = true;
+        self
+    }
+
+    /// Enable string builtins (`str_contains`, `str_replace`, `str_upper`, `str_lower`).
+    #[must_use]
+    pub fn with_string_builtins(mut self) -> Self {
+        self.string = true;
+        self
+    }
+
+    /// Enable all builtin function families.
+    #[must_use]
+    pub fn with_all_builtins(mut self) -> Self {
+        self.log = true;
+        self.env = true;
+        self.string = true;
+        self
+    }
+
+    /// Consume the builder and produce a configured [`ScriptEngine`].
+    #[must_use]
+    pub fn build(self) -> ScriptEngine {
+        let mut engine = Engine::new();
+        engine.set_max_expr_depths(
+            usize::try_from(self.max_expr_depth).unwrap_or(usize::MAX),
+            usize::try_from(self.max_function_expr_depth).unwrap_or(usize::MAX),
+        );
+        let mut se = ScriptEngine { engine };
+        if self.log {
+            se.register_builtin_log();
+        }
+        if self.env {
+            se.register_builtin_env();
+        }
+        if self.string {
+            se.register_builtin_string();
+        }
+        se
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1096,5 +1207,57 @@ mod tests {
         let engine = ScriptEngine::new();
         let err = engine.compile("fn {").unwrap_err();
         assert!(matches!(err, SoushiError::ScriptError(_)));
+    }
+
+    // --- ScriptEngineBuilder ---
+
+    #[test]
+    fn builder_default_can_eval() {
+        let engine = ScriptEngineBuilder::new().build();
+        let result = engine.eval("1 + 2").unwrap();
+        assert_eq!(result.as_int().unwrap(), 3);
+    }
+
+    #[test]
+    fn builder_with_all_builtins() {
+        let engine = ScriptEngineBuilder::new().with_all_builtins().build();
+
+        let _ = engine.eval(r#"log_info("ok")"#).unwrap();
+        let upper = engine.eval(r#"str_upper("abc")"#).unwrap();
+        assert_eq!(upper.into_string().unwrap(), "ABC");
+    }
+
+    #[test]
+    fn builder_with_selective_builtins() {
+        let engine = ScriptEngineBuilder::new()
+            .with_string_builtins()
+            .build();
+
+        let result = engine.eval(r#"str_lower("HI")"#).unwrap();
+        assert_eq!(result.into_string().unwrap(), "hi");
+
+        let err = engine.eval(r#"log_info("should fail")"#);
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn builder_custom_depth_limit() {
+        let engine = ScriptEngineBuilder::new()
+            .max_expr_depth(10)
+            .build();
+
+        let mut script = String::from("1");
+        for _ in 0..20 {
+            script = format!("({script} + 1)");
+        }
+        let result = engine.eval(&script);
+        assert!(result.is_err(), "should fail with depth limit 10");
+    }
+
+    #[test]
+    fn builder_default_trait() {
+        let engine = ScriptEngineBuilder::default().build();
+        let result = engine.eval("42").unwrap();
+        assert_eq!(result.as_int().unwrap(), 42);
     }
 }

@@ -21,7 +21,7 @@
 mod engine;
 mod error;
 
-pub use engine::ScriptEngine;
+pub use engine::{ScriptEngine, ScriptEngineBuilder};
 pub use error::SoushiError;
 
 pub use rhai;
