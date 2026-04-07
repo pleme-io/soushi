@@ -1,5 +1,6 @@
 /// Errors produced by the Soushi scripting engine.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum SoushiError {
     /// A Rhai script evaluation or parse error.
     #[error("script error: {0}")]
