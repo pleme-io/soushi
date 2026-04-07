@@ -146,12 +146,7 @@ impl ScriptEngine {
                     tracing::error!(path = %script_path.display(), error = %e, "script failed");
                     SoushiError::from(e)
                 })?;
-            let name = script_path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .map(String::from)
-                .unwrap_or_else(|| script_path.display().to_string());
-            names.push(name);
+            names.push(script_name(script_path));
         }
 
         Ok(names)
@@ -182,6 +177,17 @@ impl ScriptEngine {
     pub fn inner_mut(&mut self) -> &mut Engine {
         &mut self.engine
     }
+}
+
+/// Extract the script name from a file path.
+///
+/// Returns the file stem as a string, falling back to the full display
+/// path for non-UTF-8 filenames.
+fn script_name(path: &Path) -> String {
+    path.file_stem()
+        .and_then(|s| s.to_str())
+        .map(String::from)
+        .unwrap_or_else(|| path.display().to_string())
 }
 
 /// Collect all `.rhai` file paths from a directory, sorted for determinism.
@@ -218,6 +224,12 @@ impl From<Engine> for ScriptEngine {
 impl From<ScriptEngine> for Engine {
     fn from(se: ScriptEngine) -> Self {
         se.engine
+    }
+}
+
+impl From<ScriptEngineBuilder> for ScriptEngine {
+    fn from(builder: ScriptEngineBuilder) -> Self {
+        builder.build()
     }
 }
 
@@ -1298,5 +1310,28 @@ mod tests {
         let engine = ScriptEngineBuilder::default().build();
         let result = engine.eval("42").unwrap();
         assert_eq!(result.as_int().unwrap(), 42);
+    }
+
+    #[test]
+    fn builder_into_script_engine() {
+        let engine: ScriptEngine = ScriptEngineBuilder::new()
+            .with_string_builtins()
+            .into();
+        let result = engine.eval(r#"str_upper("hi")"#).unwrap();
+        assert_eq!(result.into_string().unwrap(), "HI");
+    }
+
+    // --- script_name helper ---
+
+    #[test]
+    fn script_name_extracts_stem() {
+        let name = script_name(Path::new("/foo/bar/baz.rhai"));
+        assert_eq!(name, "baz");
+    }
+
+    #[test]
+    fn script_name_no_extension() {
+        let name = script_name(Path::new("/foo/bar/baz"));
+        assert_eq!(name, "baz");
     }
 }
