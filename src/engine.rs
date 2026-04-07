@@ -178,17 +178,13 @@ impl ScriptEngine {
 
 /// Collect all `.rhai` file paths from a directory, sorted for determinism.
 fn collect_rhai_paths(dir: &Path) -> Result<Vec<std::path::PathBuf>, SoushiError> {
-    let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(dir)?
-        .filter_map(|entry| {
-            let entry = entry.ok()?;
-            let p = entry.path();
-            if p.extension().and_then(|e| e.to_str()) == Some("rhai") {
-                Some(p)
-            } else {
-                None
-            }
-        })
-        .collect();
+    let mut paths = Vec::new();
+    for entry in std::fs::read_dir(dir)? {
+        let p = entry?.path();
+        if p.extension().and_then(|e| e.to_str()) == Some("rhai") {
+            paths.push(p);
+        }
+    }
     paths.sort();
     Ok(paths)
 }
