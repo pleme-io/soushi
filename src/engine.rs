@@ -130,19 +130,7 @@ impl ScriptEngine {
             )));
         }
 
-        let mut scripts: Vec<std::path::PathBuf> = std::fs::read_dir(dir)?
-            .filter_map(|entry| {
-                let entry = entry.ok()?;
-                let p = entry.path();
-                if p.extension().and_then(|e| e.to_str()) == Some("rhai") {
-                    Some(p)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        scripts.sort();
+        let scripts = collect_rhai_paths(dir)?;
 
         let mut names = Vec::new();
         for script_path in &scripts {
@@ -158,7 +146,7 @@ impl ScriptEngine {
             let name = script_path
                 .file_stem()
                 .and_then(|s| s.to_str())
-                .unwrap_or("")
+                .unwrap_or_default()
                 .to_string();
             names.push(name);
         }
@@ -186,6 +174,23 @@ impl ScriptEngine {
     pub fn inner_mut(&mut self) -> &mut Engine {
         &mut self.engine
     }
+}
+
+/// Collect all `.rhai` file paths from a directory, sorted for determinism.
+fn collect_rhai_paths(dir: &Path) -> Result<Vec<std::path::PathBuf>, SoushiError> {
+    let mut paths: Vec<std::path::PathBuf> = std::fs::read_dir(dir)?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let p = entry.path();
+            if p.extension().and_then(|e| e.to_str()) == Some("rhai") {
+                Some(p)
+            } else {
+                None
+            }
+        })
+        .collect();
+    paths.sort();
+    Ok(paths)
 }
 
 impl Default for ScriptEngine {
