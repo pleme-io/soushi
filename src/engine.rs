@@ -102,11 +102,13 @@ impl ScriptEngine {
     }
 
     /// Evaluate a script string and return the result.
+    #[must_use = "script result is discarded; use let _ = ... if intentional"]
     pub fn eval(&self, script: &str) -> Result<rhai::Dynamic, SoushiError> {
         self.engine.eval(script).map_err(SoushiError::from)
     }
 
     /// Evaluate a script file at the given path and return the result.
+    #[must_use = "script result is discarded; use let _ = ... if intentional"]
     pub fn eval_file(&self, path: &Path) -> Result<rhai::Dynamic, SoushiError> {
         if !path.exists() {
             return Err(SoushiError::IoError(std::io::Error::new(
@@ -155,11 +157,13 @@ impl ScriptEngine {
     }
 
     /// Compile a script string into a reusable AST.
+    #[must_use = "compiled AST is discarded; use let _ = ... if intentional"]
     pub fn compile(&self, script: &str) -> Result<AST, SoushiError> {
         self.engine.compile(script).map_err(SoushiError::from)
     }
 
     /// Evaluate a pre-compiled AST and return the result.
+    #[must_use = "script result is discarded; use let _ = ... if intentional"]
     pub fn eval_ast(&self, ast: &AST) -> Result<rhai::Dynamic, SoushiError> {
         self.engine.eval_ast(ast).map_err(SoushiError::from)
     }
@@ -171,6 +175,7 @@ impl ScriptEngine {
     }
 
     /// Mutable access to the underlying `rhai::Engine`.
+    #[must_use]
     pub fn inner_mut(&mut self) -> &mut Engine {
         &mut self.engine
     }
