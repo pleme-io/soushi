@@ -28,6 +28,35 @@ pub enum SoushiError {
     ScriptDirNotFound(std::path::PathBuf),
 }
 
+impl SoushiError {
+    /// Returns `true` if this is a runtime script error.
+    #[must_use]
+    pub fn is_script_error(&self) -> bool {
+        matches!(self, Self::ScriptError(_))
+    }
+
+    /// Returns `true` if this is a compile/parse error.
+    #[must_use]
+    pub fn is_compile_error(&self) -> bool {
+        matches!(self, Self::CompileError(_))
+    }
+
+    /// Returns `true` if this is an I/O error.
+    #[must_use]
+    pub fn is_io_error(&self) -> bool {
+        matches!(self, Self::IoError(_))
+    }
+
+    /// Returns `true` if this is a not-found error (file, dir, or name).
+    #[must_use]
+    pub fn is_not_found(&self) -> bool {
+        matches!(
+            self,
+            Self::NoSuchScript(_) | Self::ScriptFileNotFound(_) | Self::ScriptDirNotFound(_)
+        )
+    }
+}
+
 impl From<Box<rhai::EvalAltResult>> for SoushiError {
     fn from(err: Box<rhai::EvalAltResult>) -> Self {
         Self::ScriptError(err.to_string())

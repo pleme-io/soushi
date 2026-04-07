@@ -1123,6 +1123,32 @@ mod tests {
         assert_eq!(err.to_string(), "script dir not found: /no/dir");
     }
 
+    // --- Error predicate methods ---
+
+    #[test]
+    fn error_is_script_error() {
+        let err = SoushiError::ScriptError("boom".to_string());
+        assert!(err.is_script_error());
+        assert!(!err.is_compile_error());
+        assert!(!err.is_io_error());
+        assert!(!err.is_not_found());
+    }
+
+    #[test]
+    fn error_is_compile_error() {
+        let err = SoushiError::CompileError("syntax".to_string());
+        assert!(err.is_compile_error());
+        assert!(!err.is_script_error());
+    }
+
+    #[test]
+    fn error_is_not_found_covers_all_variants() {
+        assert!(SoushiError::NoSuchScript("x".to_string()).is_not_found());
+        assert!(SoushiError::ScriptFileNotFound("/a".into()).is_not_found());
+        assert!(SoushiError::ScriptDirNotFound("/b".into()).is_not_found());
+        assert!(!SoushiError::ScriptError("x".to_string()).is_not_found());
+    }
+
     // --- Expression depth limits ---
 
     #[test]
