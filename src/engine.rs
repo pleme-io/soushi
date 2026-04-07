@@ -203,6 +203,24 @@ impl Default for ScriptEngine {
     }
 }
 
+impl std::fmt::Debug for ScriptEngine {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ScriptEngine").finish_non_exhaustive()
+    }
+}
+
+impl From<Engine> for ScriptEngine {
+    fn from(engine: Engine) -> Self {
+        Self { engine }
+    }
+}
+
+impl From<ScriptEngine> for Engine {
+    fn from(se: ScriptEngine) -> Self {
+        se.engine
+    }
+}
+
 /// Builder for configuring a [`ScriptEngine`] before use.
 ///
 /// Allows setting expression depth limits and selectively registering
@@ -330,6 +348,27 @@ mod tests {
     #[test]
     fn default_is_same_as_new() {
         let _engine = ScriptEngine::default();
+    }
+
+    #[test]
+    fn debug_impl() {
+        let engine = ScriptEngine::new();
+        let dbg = format!("{engine:?}");
+        assert!(dbg.contains("ScriptEngine"), "got: {dbg}");
+    }
+
+    #[test]
+    fn from_rhai_engine() {
+        let raw = Engine::new();
+        let engine = ScriptEngine::from(raw);
+        let result = engine.eval("1 + 1").unwrap();
+        assert_eq!(result.as_int().unwrap(), 2);
+    }
+
+    #[test]
+    fn into_rhai_engine() {
+        let engine = ScriptEngine::new();
+        let _raw: Engine = engine.into();
     }
 
     // --- eval basics ---
