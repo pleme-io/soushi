@@ -673,13 +673,13 @@ mod tests {
     }
 
     #[test]
-    fn script_error_from_parse_error() {
+    fn compile_error_from_parse_error() {
         let engine = ScriptEngine::new();
         let err = engine.compile("fn {}").unwrap_err();
         let msg = err.to_string();
         assert!(
-            msg.contains("script error"),
-            "compile error should contain 'script error': {msg}"
+            msg.contains("compile error"),
+            "compile error should contain 'compile error': {msg}"
         );
     }
 
@@ -1082,6 +1082,12 @@ mod tests {
     }
 
     #[test]
+    fn compile_error_display() {
+        let err = SoushiError::CompileError("unexpected token".to_string());
+        assert_eq!(err.to_string(), "compile error: unexpected token");
+    }
+
+    #[test]
     fn error_from_eval_alt_result() {
         let engine = ScriptEngine::new();
         let err = engine.eval("throw \"boom\"").unwrap_err();
@@ -1095,7 +1101,7 @@ mod tests {
         let engine = ScriptEngine::new();
         let err = engine.compile("fn (").unwrap_err();
         let msg = err.to_string();
-        assert!(msg.contains("script error"), "got: {msg}");
+        assert!(msg.contains("compile error"), "got: {msg}");
     }
 
     #[test]
@@ -1254,10 +1260,10 @@ mod tests {
     }
 
     #[test]
-    fn compile_error_produces_script_error() {
+    fn compile_error_produces_compile_error() {
         let engine = ScriptEngine::new();
         let err = engine.compile("fn {").unwrap_err();
-        assert!(matches!(err, SoushiError::ScriptError(_)));
+        assert!(matches!(err, SoushiError::CompileError(_)));
     }
 
     // --- ScriptEngineBuilder ---
