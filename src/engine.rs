@@ -186,8 +186,7 @@ impl ScriptEngine {
 fn script_name(path: &Path) -> String {
     path.file_stem()
         .and_then(|s| s.to_str())
-        .map(String::from)
-        .unwrap_or_else(|| path.display().to_string())
+        .map_or_else(|| path.display().to_string(), String::from)
 }
 
 /// Collect all `.rhai` file paths from a directory, sorted for determinism.

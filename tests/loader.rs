@@ -34,7 +34,7 @@ fn load_fixtures_returns_sorted_stems() {
 fn eval_math_fixture() {
     let engine = ScriptEngine::new();
     let result = engine
-        .eval_file(&fixtures_dir().join("01_math.rhai"))
+        .eval_file(fixtures_dir().join("01_math.rhai"))
         .unwrap();
     assert_eq!(result.as_int().unwrap(), 30);
 }
@@ -42,7 +42,7 @@ fn eval_math_fixture() {
 #[test]
 fn eval_string_fixture_requires_builtins() {
     let engine = ScriptEngine::new();
-    let result = engine.eval_file(&fixtures_dir().join("02_strings.rhai"));
+    let result = engine.eval_file(fixtures_dir().join("02_strings.rhai"));
     assert!(result.is_err(), "should fail without string builtins");
 }
 
@@ -52,7 +52,7 @@ fn eval_string_fixture_with_builtins() {
     engine.register_builtin_string();
 
     let result = engine
-        .eval_file(&fixtures_dir().join("02_strings.rhai"))
+        .eval_file(fixtures_dir().join("02_strings.rhai"))
         .unwrap();
     assert_eq!(result.into_string().unwrap(), "HI");
 }
@@ -61,7 +61,7 @@ fn eval_string_fixture_with_builtins() {
 fn eval_function_fixture() {
     let engine = ScriptEngine::new();
     let result = engine
-        .eval_file(&fixtures_dir().join("03_functions.rhai"))
+        .eval_file(fixtures_dir().join("03_functions.rhai"))
         .unwrap();
     assert_eq!(result.as_int().unwrap(), 23);
 }
