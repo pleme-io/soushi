@@ -146,8 +146,8 @@ impl ScriptEngine {
             let name = script_path
                 .file_stem()
                 .and_then(|s| s.to_str())
-                .unwrap_or_default()
-                .to_string();
+                .map(String::from)
+                .unwrap_or_else(|| script_path.display().to_string());
             names.push(name);
         }
 
