@@ -103,13 +103,16 @@ impl ScriptEngine {
 
     /// Evaluate a script string and return the result.
     #[must_use = "script result is discarded; use let _ = ... if intentional"]
-    pub fn eval(&self, script: &str) -> Result<rhai::Dynamic, SoushiError> {
-        self.engine.eval(script).map_err(SoushiError::from)
+    pub fn eval(&self, script: impl AsRef<str>) -> Result<rhai::Dynamic, SoushiError> {
+        self.engine
+            .eval(script.as_ref())
+            .map_err(SoushiError::from)
     }
 
     /// Evaluate a script file at the given path and return the result.
     #[must_use = "script result is discarded; use let _ = ... if intentional"]
-    pub fn eval_file(&self, path: &Path) -> Result<rhai::Dynamic, SoushiError> {
+    pub fn eval_file(&self, path: impl AsRef<Path>) -> Result<rhai::Dynamic, SoushiError> {
+        let path = path.as_ref();
         if !path.exists() {
             return Err(SoushiError::IoError(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
@@ -124,7 +127,11 @@ impl ScriptEngine {
     ///
     /// Returns the list of loaded script names (file stems). Files are
     /// loaded in sorted order for deterministic behavior.
-    pub fn load_scripts_dir(&mut self, dir: &Path) -> Result<Vec<String>, SoushiError> {
+    pub fn load_scripts_dir(
+        &mut self,
+        dir: impl AsRef<Path>,
+    ) -> Result<Vec<String>, SoushiError> {
+        let dir = dir.as_ref();
         if !dir.is_dir() {
             return Err(SoushiError::IoError(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
@@ -158,8 +165,10 @@ impl ScriptEngine {
 
     /// Compile a script string into a reusable AST.
     #[must_use = "compiled AST is discarded; use let _ = ... if intentional"]
-    pub fn compile(&self, script: &str) -> Result<AST, SoushiError> {
-        self.engine.compile(script).map_err(SoushiError::from)
+    pub fn compile(&self, script: impl AsRef<str>) -> Result<AST, SoushiError> {
+        self.engine
+            .compile(script.as_ref())
+            .map_err(SoushiError::from)
     }
 
     /// Evaluate a pre-compiled AST and return the result.
