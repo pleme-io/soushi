@@ -71,7 +71,7 @@ fn register_all_builtins_enables_all_families() {
     let mut engine = ScriptEngine::new();
     engine.register_all_builtins();
 
-    engine.eval(r#"log_info("test")"#).unwrap();
+    let _ = engine.eval(r#"log_info("test")"#).unwrap();
 
     let upper = engine.eval(r#"str_upper("hello")"#).unwrap();
     assert_eq!(upper.into_string().unwrap(), "HELLO");

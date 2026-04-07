@@ -264,9 +264,9 @@ mod tests {
     #[test]
     fn eval_returns_float() {
         let engine = ScriptEngine::new();
-        let result = engine.eval("3.14").unwrap();
+        let result = engine.eval("1.5").unwrap();
         let f = result.as_float().unwrap();
-        assert!((f - 3.14).abs() < f64::EPSILON);
+        assert!((f - 1.5).abs() < f64::EPSILON);
     }
 
     // --- Builtin string functions ---
@@ -627,7 +627,7 @@ mod tests {
     #[test]
     fn eval_map_literal() {
         let engine = ScriptEngine::new();
-        let result = engine.eval(r#"let m = #{x: 42}; m.x"#).unwrap();
+        let result = engine.eval(r"let m = #{x: 42}; m.x").unwrap();
         assert_eq!(result.as_int().unwrap(), 42);
     }
 
@@ -981,7 +981,7 @@ mod tests {
         let mut engine = ScriptEngine::new();
         engine.register_all_builtins();
 
-        engine.eval(r#"log_info("ok")"#).unwrap();
+        let _ = engine.eval(r#"log_info("ok")"#).unwrap();
         let upper = engine.eval(r#"str_upper("abc")"#).unwrap();
         assert_eq!(upper.into_string().unwrap(), "ABC");
         let env = engine
