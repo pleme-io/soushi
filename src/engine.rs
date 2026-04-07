@@ -973,4 +973,109 @@ mod tests {
         let val = rhai::Dynamic::from(42_i64);
         assert_eq!(val.as_int().unwrap(), 42);
     }
+
+    // --- register_all_builtins ---
+
+    #[test]
+    fn register_all_builtins_registers_every_family() {
+        let mut engine = ScriptEngine::new();
+        engine.register_all_builtins();
+
+        engine.eval(r#"log_info("ok")"#).unwrap();
+        let upper = engine.eval(r#"str_upper("abc")"#).unwrap();
+        assert_eq!(upper.into_string().unwrap(), "ABC");
+        let env = engine
+            .eval(r#"env_var("SOUSHI_NOPE_999")"#)
+            .unwrap();
+        assert_eq!(env.into_string().unwrap(), "");
+    }
+
+    // --- collect_rhai_paths ---
+
+    #[test]
+    fn collect_rhai_paths_returns_sorted_paths() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("z.rhai"), "1;").unwrap();
+        std::fs::write(dir.path().join("a.rhai"), "1;").unwrap();
+        std::fs::write(dir.path().join("m.rhai"), "1;").unwrap();
+        std::fs::write(dir.path().join("readme.md"), "hi").unwrap();
+
+        let paths = collect_rhai_paths(dir.path()).unwrap();
+        assert_eq!(paths.len(), 3);
+        let stems: Vec<&str> = paths
+            .iter()
+            .map(|p| p.file_stem().unwrap().to_str().unwrap())
+            .collect();
+        assert_eq!(stems, vec!["a", "m", "z"]);
+    }
+
+    #[test]
+    fn collect_rhai_paths_empty_dir() {
+        let dir = TempDir::new().unwrap();
+        let paths = collect_rhai_paths(dir.path()).unwrap();
+        assert!(paths.is_empty());
+    }
+
+    // --- load_scripts_dir with script-level errors ---
+
+    #[test]
+    fn load_scripts_dir_returns_script_error_variant() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("bad.rhai"), "let = ;").unwrap();
+
+        let mut engine = ScriptEngine::new();
+        let err = engine.load_scripts_dir(dir.path()).unwrap_err();
+        assert!(
+            matches!(err, SoushiError::ScriptError(_)),
+            "expected ScriptError, got: {err:?}"
+        );
+    }
+
+    // --- eval_file with builtins ---
+
+    #[test]
+    fn eval_file_uses_registered_builtins() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("use_builtin.rhai");
+        std::fs::write(&path, r#"str_upper("test")"#).unwrap();
+
+        let mut engine = ScriptEngine::new();
+        engine.register_builtin_string();
+        let result = engine.eval_file(&path).unwrap();
+        assert_eq!(result.into_string().unwrap(), "TEST");
+    }
+
+    // --- Default trait ---
+
+    #[test]
+    fn default_engine_can_eval() {
+        let engine = ScriptEngine::default();
+        let result = engine.eval("2 + 2").unwrap();
+        assert_eq!(result.as_int().unwrap(), 4);
+    }
+
+    // --- Error conversion coverage ---
+
+    #[test]
+    fn io_error_from_trait() {
+        let io = std::io::Error::new(std::io::ErrorKind::BrokenPipe, "pipe broken");
+        let err = SoushiError::from(io);
+        assert!(matches!(err, SoushiError::IoError(_)));
+        assert!(err.to_string().contains("pipe broken"));
+    }
+
+    #[test]
+    fn eval_runtime_error_produces_script_error() {
+        let engine = ScriptEngine::new();
+        let err = engine.eval("throw \"runtime boom\"").unwrap_err();
+        assert!(matches!(err, SoushiError::ScriptError(_)));
+        assert!(err.to_string().contains("boom"));
+    }
+
+    #[test]
+    fn compile_error_produces_script_error() {
+        let engine = ScriptEngine::new();
+        let err = engine.compile("fn {").unwrap_err();
+        assert!(matches!(err, SoushiError::ScriptError(_)));
+    }
 }
