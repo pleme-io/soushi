@@ -13,6 +13,14 @@ pub enum SoushiError {
     /// The requested script was not found by name.
     #[error("no such script: {0}")]
     NoSuchScript(String),
+
+    /// A script file could not be found at the given path.
+    #[error("script file not found: {0}")]
+    ScriptFileNotFound(std::path::PathBuf),
+
+    /// A script directory could not be found at the given path.
+    #[error("script dir not found: {0}")]
+    ScriptDirNotFound(std::path::PathBuf),
 }
 
 impl From<Box<rhai::EvalAltResult>> for SoushiError {

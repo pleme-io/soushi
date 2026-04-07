@@ -114,10 +114,7 @@ impl ScriptEngine {
     pub fn eval_file(&self, path: impl AsRef<Path>) -> Result<rhai::Dynamic, SoushiError> {
         let path = path.as_ref();
         if !path.exists() {
-            return Err(SoushiError::IoError(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("script not found: {}", path.display()),
-            )));
+            return Err(SoushiError::ScriptFileNotFound(path.to_path_buf()));
         }
         let script = std::fs::read_to_string(path)?;
         self.eval(&script)
@@ -133,10 +130,7 @@ impl ScriptEngine {
     ) -> Result<Vec<String>, SoushiError> {
         let dir = dir.as_ref();
         if !dir.is_dir() {
-            return Err(SoushiError::IoError(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("script directory does not exist: {}", dir.display()),
-            )));
+            return Err(SoushiError::ScriptDirNotFound(dir.to_path_buf()));
         }
 
         let scripts = collect_rhai_paths(dir)?;
@@ -420,7 +414,10 @@ mod tests {
         let engine = ScriptEngine::new();
         let result = engine.eval_file(Path::new("/nonexistent/path/script.rhai"));
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), SoushiError::IoError(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            SoushiError::ScriptFileNotFound(_)
+        ));
     }
 
     // --- load_scripts_dir ---
@@ -944,6 +941,18 @@ mod tests {
         let err = SoushiError::NoSuchScript("test".to_string());
         let debug = format!("{err:?}");
         assert!(debug.contains("NoSuchScript"), "got: {debug}");
+    }
+
+    #[test]
+    fn script_file_not_found_display() {
+        let err = SoushiError::ScriptFileNotFound(std::path::PathBuf::from("/missing.rhai"));
+        assert_eq!(err.to_string(), "script file not found: /missing.rhai");
+    }
+
+    #[test]
+    fn script_dir_not_found_display() {
+        let err = SoushiError::ScriptDirNotFound(std::path::PathBuf::from("/no/dir"));
+        assert_eq!(err.to_string(), "script dir not found: /no/dir");
     }
 
     // --- Expression depth limits ---

@@ -110,8 +110,8 @@ fn eval_file_nonexistent_produces_io_error() {
         .eval_file(Path::new("/tmp/soushi_no_such_file.rhai"))
         .unwrap_err();
     assert!(
-        matches!(err, soushi::SoushiError::IoError(_)),
-        "expected IoError, got: {err:?}"
+        matches!(err, soushi::SoushiError::ScriptFileNotFound(_)),
+        "expected ScriptFileNotFound, got: {err:?}"
     );
 }
 
@@ -122,7 +122,7 @@ fn load_scripts_dir_nonexistent_produces_io_error() {
         .load_scripts_dir(Path::new("/tmp/soushi_no_such_dir"))
         .unwrap_err();
     assert!(
-        matches!(err, soushi::SoushiError::IoError(_)),
-        "expected IoError, got: {err:?}"
+        matches!(err, soushi::SoushiError::ScriptDirNotFound(_)),
+        "expected ScriptDirNotFound, got: {err:?}"
     );
 }
