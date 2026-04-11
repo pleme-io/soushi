@@ -1365,4 +1365,184 @@ mod tests {
         let name = script_name(Path::new("/foo/bar/baz"));
         assert_eq!(name, "baz");
     }
+
+    // --- Builder: max_function_expr_depth ---
+
+    #[test]
+    fn builder_max_function_expr_depth_separate_from_global() {
+        // Set global depth high but function depth low
+        let engine = ScriptEngineBuilder::new()
+            .max_expr_depth(128)
+            .max_function_expr_depth(5)
+            .build();
+
+        // A simple function call should work
+        let result = engine.eval("fn add(a, b) { a + b } add(1, 2)").unwrap();
+        assert_eq!(result.as_int().unwrap(), 3);
+
+        // A deeply nested function body should fail
+        let mut body = String::from("x");
+        for _ in 0..10 {
+            body = format!("({body} + 1)");
+        }
+        let script = format!("fn deep(x) {{ {body} }} deep(0)");
+        let result = engine.eval(&script);
+        assert!(result.is_err(), "deeply nested function body should be rejected");
+    }
+
+    // --- Builder: individual builtin selection ---
+
+    #[test]
+    fn builder_with_log_builtins_only() {
+        let engine = ScriptEngineBuilder::new()
+            .with_log_builtins()
+            .build();
+
+        let _ = engine.eval(r#"log_info("ok")"#).unwrap();
+        // String builtins should NOT be available
+        let err = engine.eval(r#"str_upper("hi")"#);
+        assert!(err.is_err(), "str_upper should not be registered");
+    }
+
+    #[test]
+    fn builder_with_env_builtins_only() {
+        let engine = ScriptEngineBuilder::new()
+            .with_env_builtins()
+            .build();
+
+        let result = engine
+            .eval(r#"env_var("SOUSHI_NONEXISTENT_BUILDER_TEST")"#)
+            .unwrap();
+        assert_eq!(result.into_string().unwrap(), "");
+        // Log builtins should NOT be available
+        let err = engine.eval(r#"log_info("fail")"#);
+        assert!(err.is_err(), "log_info should not be registered");
+    }
+
+    // --- Scope isolation between eval calls ---
+
+    #[test]
+    fn eval_calls_have_isolated_scopes() {
+        let engine = ScriptEngine::new();
+        // Define a variable in one eval
+        let _ = engine.eval("let isolated_var = 42;").unwrap();
+        // It should NOT be visible in the next eval
+        let result = engine.eval("isolated_var");
+        assert!(result.is_err(), "variables should not leak between eval calls");
+    }
+
+    // --- Custom function overriding ---
+
+    #[test]
+    fn register_fn_can_override_previous() {
+        let mut engine = ScriptEngine::new();
+        engine.register_fn("compute", |x: i64| x + 1);
+
+        let r1 = engine.eval("compute(10)").unwrap();
+        assert_eq!(r1.as_int().unwrap(), 11);
+
+        // Register again with different behavior
+        engine.register_fn("compute", |x: i64| x * 10);
+        let r2 = engine.eval("compute(10)").unwrap();
+        assert_eq!(r2.as_int().unwrap(), 100);
+    }
+
+    // --- Error predicate: is_io_error ---
+
+    #[test]
+    fn error_is_io_error_predicate() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "gone");
+        let err = SoushiError::from(io_err);
+        assert!(err.is_io_error());
+        assert!(!err.is_script_error());
+        assert!(!err.is_compile_error());
+    }
+
+    // --- Closures in scripts ---
+
+    #[test]
+    fn eval_function_pointer_call() {
+        let engine = ScriptEngine::new();
+        let script = r#"
+            fn double(x) { x * 2 }
+            let f = Fn("double");
+            f.call(21)
+        "#;
+        let result = engine.eval(script).unwrap();
+        assert_eq!(result.as_int().unwrap(), 42);
+    }
+
+    // --- eval with owned String ---
+
+    #[test]
+    fn eval_accepts_owned_string() {
+        let engine = ScriptEngine::new();
+        let script = String::from("10 * 5");
+        let result = engine.eval(script).unwrap();
+        assert_eq!(result.as_int().unwrap(), 50);
+    }
+
+    // --- Builder full chaining ---
+
+    #[test]
+    fn builder_full_chain() {
+        let engine = ScriptEngineBuilder::new()
+            .max_expr_depth(100)
+            .max_function_expr_depth(50)
+            .with_log_builtins()
+            .with_env_builtins()
+            .with_string_builtins()
+            .build();
+
+        // All builtins should work
+        let _ = engine.eval(r#"log_info("chain test")"#).unwrap();
+        let upper = engine.eval(r#"str_upper("chain")"#).unwrap();
+        assert_eq!(upper.into_string().unwrap(), "CHAIN");
+        let env = engine.eval(r#"env_var("SOUSHI_NOPE")"#).unwrap();
+        assert_eq!(env.into_string().unwrap(), "");
+    }
+
+    // --- Error: Send + Sync ---
+
+    #[test]
+    fn soushi_error_is_send_and_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<SoushiError>();
+    }
+
+    // --- Eval with throw produces script error ---
+
+    #[test]
+    fn eval_throw_produces_script_error_predicate() {
+        let engine = ScriptEngine::new();
+        let err = engine.eval(r#"throw "custom error""#).unwrap_err();
+        assert!(err.is_script_error());
+        assert!(!err.is_compile_error());
+        assert!(!err.is_io_error());
+        assert!(!err.is_not_found());
+    }
+
+    // --- Compile then eval_ast with builtins ---
+
+    #[test]
+    fn compile_ast_with_custom_fn_then_eval() {
+        let mut engine = ScriptEngine::new();
+        engine.register_fn("triple", |x: i64| x * 3);
+
+        let ast = engine.compile("triple(7)").unwrap();
+        let result = engine.eval_ast(&ast).unwrap();
+        assert_eq!(result.as_int().unwrap(), 21);
+    }
+
+    // --- Eval returning array ---
+
+    #[test]
+    fn eval_returns_array() {
+        let engine = ScriptEngine::new();
+        let result = engine.eval("[1, 2, 3, 4, 5]").unwrap();
+        let arr = result.into_array().unwrap();
+        assert_eq!(arr.len(), 5);
+        assert_eq!(arr[0].as_int().unwrap(), 1);
+        assert_eq!(arr[4].as_int().unwrap(), 5);
+    }
 }
